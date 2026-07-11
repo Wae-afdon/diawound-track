@@ -4020,6 +4020,14 @@ function DoctorPatientTrackingScreen({
         </div>
       </Card>
 
+      <DoctorAlertCard latest={latest} reminder={reminders.find((item) => item.patientId === patient.id)} correction={correction} />
+      <DoctorLatestWoundSection
+        patient={patient}
+        latest={latest}
+        correction={correction}
+        onCorrect={openCorrection}
+      />
+
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
         <Button variant="secondary" icon={Camera} onClick={() => {}}>
           {t("viewLatestWound")}
@@ -4046,13 +4054,6 @@ function DoctorPatientTrackingScreen({
           {t("emergencyCall")}
         </Button>
       </div>
-
-      <DoctorAlertCard latest={latest} reminder={reminders.find((item) => item.patientId === patient.id)} correction={correction} />
-      <DoctorLatestWoundSection
-        patient={patient}
-        latest={latest}
-        correction={correction}
-      />
     </>
   );
 }
@@ -4547,10 +4548,12 @@ function DoctorLatestWoundSection({
   patient,
   latest,
   correction,
+  onCorrect,
 }: {
   patient: Patient;
   latest?: AssessmentRecord;
   correction?: DoctorCorrection;
+  onCorrect?: () => void;
 }) {
   const { language, t } = useLanguage();
   if (!latest) {
@@ -4576,6 +4579,45 @@ function DoctorLatestWoundSection({
             <InfoCell label={t("visitType")} value={localize(VISIT_TYPE_COPY[latest.visitType], language)} />
             <InfoCell label={t("woundLocation")} value={localize(patient.woundLocation, language)} />
           </div>
+          <div className="grid gap-3 2xl:grid-cols-2">
+            <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3">
+              <p className="text-xs font-black text-[var(--muted)]">
+                {t("originalAiResult")}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <PhaseBadge phase={latest.clinicalPhase} />
+                <RiskBadge risk={latest.riskLevel} />
+              </div>
+              <p className="mt-3 text-sm font-semibold leading-relaxed text-[var(--muted)]">
+                {localize(latest.recommendation, language)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-[var(--primary)] bg-[var(--surface-strong)] p-3">
+              <p className="text-xs font-black text-[var(--primary)]">
+                {t("correctedByDoctor")}
+              </p>
+              {correction ? (
+                <>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <PhaseBadge phase={correction.correctedClinicalPhase} />
+                    <RiskBadge risk={correction.correctedRiskLevel} />
+                  </div>
+                  <p className="mt-3 text-sm font-semibold leading-relaxed text-[var(--muted)]">
+                    {localize(correction.doctorNote, language)}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-2 text-sm font-semibold text-[var(--muted)]">
+                  {t("noCorrection")}
+                </p>
+              )}
+              {onCorrect ? (
+                <Button icon={Edit3} onClick={onCorrect} className="mt-3 w-full">
+                  {t("correctAiResult")}
+                </Button>
+              ) : null}
+            </div>
+          </div>
         </div>
 
         <div className="grid content-start gap-4">
@@ -4597,37 +4639,6 @@ function DoctorLatestWoundSection({
           <SensationSummary record={latest} />
           <DatasetSourceBox record={latest} />
           <TissueBars record={latest} />
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] p-3">
-              <p className="text-xs font-black text-[var(--muted)]">
-                {t("originalAiResult")}
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <PhaseBadge phase={latest.clinicalPhase} />
-                <RiskBadge risk={latest.riskLevel} />
-              </div>
-            </div>
-            <div className="rounded-lg border border-[var(--primary)] bg-[var(--surface-strong)] p-3">
-              <p className="text-xs font-black text-[var(--primary)]">
-                {t("correctedByDoctor")}
-              </p>
-              {correction ? (
-                <>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <PhaseBadge phase={correction.correctedClinicalPhase} />
-                    <RiskBadge risk={correction.correctedRiskLevel} />
-                  </div>
-                  <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-                    {localize(correction.doctorNote, language)}
-                  </p>
-                </>
-              ) : (
-                <p className="mt-2 text-sm font-semibold text-[var(--muted)]">
-                  {t("noCorrection")}
-                </p>
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </Card>
