@@ -777,7 +777,7 @@ function Badge({
 
   return (
     <span
-      className={`inline-flex min-h-7 items-center rounded-lg border px-2 py-1 text-xs font-black leading-tight ${tones[tone]}`}
+      className={`inline-flex min-h-7 max-w-full items-center rounded-lg border px-2 py-1 text-left text-xs font-black leading-tight ${tones[tone]}`}
     >
       {children}
     </span>
@@ -4077,17 +4077,17 @@ function ChwSidebarPatientCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full rounded-lg border p-3 text-left transition ${
+      className={`block w-full max-w-full overflow-hidden rounded-lg border p-3 text-left transition ${
         selected
           ? "border-[var(--primary)] bg-[var(--surface-strong)] shadow-sm"
           : "border-[var(--line)] bg-[var(--surface)]"
       }`}
     >
-      <div className="grid grid-cols-[54px_minmax(0,1fr)] gap-3">
+      <div className="grid min-w-0 grid-cols-[54px_minmax(0,1fr)] gap-3">
         <MockWoundPhoto imageDataUrl={latest?.imageDataUrl} className="aspect-square" />
         <div className="min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap items-start gap-2">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-black text-[var(--ink)]">
                 {patient.patientCode}
               </p>
@@ -4095,7 +4095,9 @@ function ChwSidebarPatientCard({
                 {patient.citizenIdMasked}
               </p>
             </div>
-            <Badge tone={status.tone}>{status.label}</Badge>
+            <div className="ml-auto max-w-full">
+              <Badge tone={status.tone}>{status.label}</Badge>
+            </div>
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {latest ? <PhaseBadge phase={latest.clinicalPhase} /> : null}
@@ -4143,8 +4145,8 @@ function ChwPatientListContent({
   });
 
   return (
-    <div className="grid min-h-0 gap-3">
-      <div className="grid gap-3">
+    <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
+      <div className="grid shrink-0 gap-3">
         <TextInput
           label={t("search")}
           placeholder={t("patientSearchPlaceholder")}
@@ -4155,8 +4157,8 @@ function ChwPatientListContent({
           {t("addPatientShort")}
         </Button>
       </div>
-      <div className="app-scrollbar min-h-0 overflow-y-auto">
-        <div className="grid gap-2">
+      <div className="app-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+        <div className="grid gap-3 pb-1">
           {filteredPatients.map((patient) => {
             const latest = latestAssessmentFor(patient.id, assessments);
             return (
@@ -4223,7 +4225,7 @@ function ChwPatientListDrawer({
           <IconButton icon={ChevronLeft} label={t("close")} onClick={onClose} />
         </div>
 
-        <div className="min-h-0 flex-1 p-4">
+        <div className="min-h-0 flex-1 overflow-hidden p-4">
           <ChwPatientListContent
             patients={patients}
             assessments={assessments}
@@ -4283,27 +4285,30 @@ function ChwPatientTrackingScreen({
         onClose={() => setDrawerOpen(false)}
       />
 
-      <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-        <aside className="hidden lg:block">
-          <Card className="sticky top-20 max-h-[calc(100vh-180px)] p-4">
-            <div className="mb-3">
+      <div className="grid gap-4 lg:h-[calc(100vh-11rem)] lg:min-h-[640px] lg:grid-cols-[400px_minmax(0,1fr)] lg:gap-6 lg:overflow-hidden">
+        <aside className="hidden min-h-0 lg:flex">
+          <Card className="flex h-full min-h-0 w-full flex-col overflow-hidden border-[var(--line)] p-4 shadow-lg">
+            <div className="mb-3 shrink-0 border-b border-[var(--line)] pb-3">
               <p className="text-xs font-black text-[var(--primary)]">
                 {t("primaryCareSystemLabel")}
               </p>
               <h2 className="text-lg font-black">{t("patientListDrawer")}</h2>
             </div>
-            <ChwPatientListContent
-              patients={patients}
-              assessments={assessments}
-              consultationCases={consultationCases}
-              selectedPatientId={patient.id}
-              onSelectPatient={onSelectPatient}
-              onAddPatient={() => onNavigate("communityPatientList")}
-            />
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <ChwPatientListContent
+                patients={patients}
+                assessments={assessments}
+                consultationCases={consultationCases}
+                selectedPatientId={patient.id}
+                onSelectPatient={onSelectPatient}
+                onAddPatient={() => onNavigate("communityPatientList")}
+              />
+            </div>
           </Card>
         </aside>
 
-        <div className="grid gap-4">
+        <section className="min-w-0 lg:min-h-0 lg:overflow-hidden lg:rounded-lg lg:border lg:border-[var(--line)] lg:bg-[var(--surface)] lg:shadow-lg">
+          <div className="app-scrollbar grid gap-4 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:p-5">
           <ScreenHeader title={t("communityPatientTracking")} eyebrow={t("primaryCareSystemLabel")}>
             <p>{t("publicHealthWorkflow")}</p>
           </ScreenHeader>
@@ -4483,7 +4488,8 @@ function ChwPatientTrackingScreen({
               {t("emergencyCall")}
             </Button>
           </div>
-        </div>
+          </div>
+        </section>
       </div>
     </>
   );
