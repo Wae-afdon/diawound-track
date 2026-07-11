@@ -129,6 +129,14 @@ textarea {
   animation: doctor-patient-drawer-backdrop-in 160ms ease-out both;
 }
 
+.floating-chat {
+  animation: floatingChat 3s ease-in-out infinite;
+}
+
+.chat-quick-panel {
+  animation: chat-quick-panel-in 180ms ease-out both;
+}
+
 @keyframes doctor-patient-drawer-in {
   from {
     transform: translateX(-100%);
@@ -146,6 +154,41 @@ textarea {
 
   to {
     opacity: 1;
+  }
+}
+
+@keyframes floatingChat {
+  0% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes chat-quick-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-chat,
+  .chat-quick-panel,
+  .doctor-patient-drawer,
+  .doctor-patient-drawer-backdrop {
+    animation: none;
   }
 }
 

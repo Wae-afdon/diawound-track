@@ -32,6 +32,7 @@ import {
   UserPlus,
   UserRound,
   Users,
+  X,
 } from "lucide-react";
 import type {
   ChangeEvent,
@@ -1632,6 +1633,10 @@ function AppShell({
   onPatientChat: () => void;
   children: ReactNode;
 }) {
+  const [chatQuickPanelOpen, setChatQuickPanelOpen] = useState(false);
+
+  const closeChatQuickPanel = () => setChatQuickPanelOpen(false);
+
   return (
     <div className={`theme-${theme} min-h-screen overflow-x-hidden bg-[var(--app-bg)] text-[var(--ink)] lg:h-screen lg:min-h-0 lg:overflow-hidden`}>
       <div className="mx-auto flex min-h-screen w-full flex-col lg:h-full lg:min-h-0 lg:grid lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-6 lg:p-4 xl:grid-cols-[320px_minmax(0,1fr)] xl:p-6">
@@ -1647,17 +1652,28 @@ function AppShell({
             onLogout={onLogout}
           />
           <main className="app-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4 lg:px-7 lg:py-6">
-            <ResponsiveContainer className="pb-24 lg:pb-6">
+            <ResponsiveContainer className="pb-[calc(8.5rem+env(safe-area-inset-bottom))] lg:pb-6">
               {showMedicalDisclaimer ? <MedicalDisclaimerBox compact /> : null}
               {children}
             </ResponsiveContainer>
           </main>
-          {showPatientChat ? (
-            <PatientChatFloatingButton onClick={onPatientChat} />
+          {showPatientChat && !chatQuickPanelOpen ? (
+            <FloatingChatButton onClick={() => setChatQuickPanelOpen(true)} />
           ) : null}
-          <div className="lg:hidden">
-            <MobileBottomNav role={role} page={page} onNavigate={onNavigate} />
-          </div>
+          {showPatientChat && chatQuickPanelOpen ? (
+            <ChatQuickPanel
+              onClose={closeChatQuickPanel}
+              onNavigate={(nextPage) => {
+                closeChatQuickPanel();
+                onNavigate(nextPage);
+              }}
+              onPatientChat={() => {
+                closeChatQuickPanel();
+                onPatientChat();
+              }}
+            />
+          ) : null}
+          <MobileBottomNav role={role} page={page} onNavigate={onNavigate} />
         </div>
       </div>
     </div>
@@ -1675,8 +1691,8 @@ function MobileBottomNav({
 }) {
   const { t } = useLanguage();
   return (
-    <nav className="sticky bottom-0 z-20 border-t border-[var(--line)] bg-[var(--phone-bg)] px-2 pb-3 pt-2">
-      <div className="grid grid-cols-5 gap-1">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--line)] bg-[var(--phone-bg)]/95 px-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-18px_48px_rgba(2,6,23,0.26)] backdrop-blur lg:hidden">
+      <div className="mx-auto grid max-w-lg grid-cols-5 items-end gap-1">
         {bottomNav[role].map((item) => {
           const active = item.page === page;
           const Icon = item.icon;
@@ -1688,19 +1704,19 @@ function MobileBottomNav({
               onClick={() => onNavigate(item.page)}
               className={`grid place-items-center text-center text-[11px] font-black leading-tight ${
                 featuredCamera
-                  ? `-mt-7 min-h-[72px] rounded-full border-4 border-[var(--phone-bg)] px-2 shadow-lg ${
+                  ? `-mt-10 mx-auto min-h-[88px] w-[78px] rounded-[2rem] border-4 border-[var(--phone-bg)] px-2 shadow-[0_16px_34px_rgba(56,189,248,0.28)] ${
                       active
                         ? "bg-[var(--primary)] text-[var(--primary-ink)]"
                         : "bg-[var(--primary)] text-[var(--primary-ink)]"
                     }`
-                  : `min-h-[58px] rounded-lg px-1 ${
+                  : `min-h-[60px] rounded-lg px-1 ${
                       active
                         ? "bg-[var(--primary)] text-[var(--primary-ink)]"
                         : "text-[var(--muted)]"
                     }`
               }`}
             >
-              <Icon size={featuredCamera ? 24 : 19} />
+              <Icon size={featuredCamera ? 28 : 20} />
               <span className="max-w-full truncate">{t(item.labelKey)}</span>
             </button>
           );
@@ -1710,17 +1726,85 @@ function MobileBottomNav({
   );
 }
 
-function PatientChatFloatingButton({ onClick }: { onClick: () => void }) {
+function FloatingChatButton({ onClick }: { onClick: () => void }) {
   const { t } = useLanguage();
   return (
     <button
       type="button"
       onClick={onClick}
-      className="absolute bottom-24 right-4 z-30 inline-flex min-h-12 items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--primary)] px-4 py-2 text-sm font-black text-[var(--primary-ink)] shadow-lg"
+      className="floating-chat fixed bottom-[calc(6.8rem+env(safe-area-inset-bottom))] right-4 z-50 inline-flex min-h-12 items-center gap-2 rounded-full border border-[var(--line)] bg-[var(--primary)] px-5 py-3 text-sm font-black text-[var(--primary-ink)] shadow-[0_18px_38px_rgba(56,189,248,0.28)] lg:hidden"
     >
       <MessageCircle size={19} />
       {t("chat")}
     </button>
+  );
+}
+
+function ChatQuickPanel({
+  onClose,
+  onNavigate,
+  onPatientChat,
+}: {
+  onClose: () => void;
+  onNavigate: (page: AppPage) => void;
+  onPatientChat: () => void;
+}) {
+  const { language } = useLanguage();
+  const copy =
+    language === "th"
+      ? {
+          title: "แชทช่วยเหลือ",
+          subtitle: "เลือกช่องทางติดต่อที่ต้องการ",
+          contactChw: "ติดต่อ อสม.",
+          contactClinic: "ติดต่อคลินิก",
+          askAi: "ถามเกี่ยวกับผล AI",
+          emergency: "โทรฉุกเฉิน",
+          close: "ปิด",
+        }
+      : {
+          title: "Quick Help",
+          subtitle: "Choose how you want to get help.",
+          contactChw: "Contact CHW",
+          contactClinic: "Contact Clinic",
+          askAi: "Ask About AI Result",
+          emergency: "Emergency Call",
+          close: "Close",
+        };
+
+  return (
+    <div className="fixed inset-0 z-50 lg:hidden">
+      <button
+        type="button"
+        aria-label={copy.close}
+        className="absolute inset-0 bg-slate-950/45"
+        onClick={onClose}
+      />
+      <section className="chat-quick-panel absolute inset-x-3 bottom-[calc(6.3rem+env(safe-area-inset-bottom))] mx-auto max-w-md rounded-2xl border border-[var(--line)] bg-[var(--phone-bg)] p-4 text-[var(--ink)] shadow-[0_24px_70px_rgba(2,6,23,0.36)]">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-black">{copy.title}</h2>
+            <p className="mt-1 text-sm font-semibold text-[var(--muted)]">
+              {copy.subtitle}
+            </p>
+          </div>
+          <IconButton icon={X} label={copy.close} onClick={onClose} />
+        </div>
+        <div className="grid gap-2">
+          <Button variant="secondary" icon={Users} onClick={() => onNavigate("contactChw")}>
+            {copy.contactChw}
+          </Button>
+          <Button variant="secondary" icon={Building2} onClick={() => onNavigate("partnerClinics")}>
+            {copy.contactClinic}
+          </Button>
+          <Button icon={Sparkles} onClick={onPatientChat}>
+            {copy.askAi}
+          </Button>
+          <Button variant="danger" icon={Ambulance} onClick={() => onNavigate("emergency")}>
+            {copy.emergency}
+          </Button>
+        </div>
+      </section>
+    </div>
   );
 }
 
