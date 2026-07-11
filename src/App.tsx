@@ -3,7 +3,9 @@ import {
   Ambulance,
   Bell,
   Building2,
+  CalendarClock,
   CalendarDays,
+  CalendarX,
   Camera,
   CheckCircle2,
   ChevronLeft,
@@ -827,6 +829,61 @@ function InfoCell({ label, value }: { label: string; value: ReactNode }) {
         {value}
       </div>
     </div>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+  actionIcon: ActionIcon,
+  variant = "primary",
+}: {
+  icon: AppIcon;
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  actionIcon?: AppIcon;
+  variant?: "primary" | "warning" | "danger";
+}) {
+  const variants = {
+    primary:
+      "border-[var(--primary)] bg-[var(--surface-soft)] text-[var(--primary)]",
+    warning:
+      "border-amber-400/50 bg-amber-400/10 text-[var(--warning)]",
+    danger:
+      "border-red-400/40 bg-red-500/10 text-[var(--danger)]",
+  };
+
+  return (
+    <Card className={`border ${variants[variant]}`}>
+      <div className="mx-auto grid max-w-xl justify-items-center gap-3 text-center">
+        <div className="grid h-16 w-16 place-items-center rounded-full border border-current/25 bg-current/10">
+          <Icon size={46} />
+        </div>
+        <div className="grid gap-2">
+          <h2 className="text-lg font-black text-[var(--ink)] sm:text-xl">
+            {title}
+          </h2>
+          <p className="text-sm font-semibold leading-relaxed text-[var(--muted)]">
+            {description}
+          </p>
+        </div>
+        {actionLabel && onAction ? (
+          <Button
+            icon={ActionIcon}
+            variant={variant === "danger" ? "secondary" : "primary"}
+            onClick={onAction}
+            className="w-full sm:w-auto"
+          >
+            {actionLabel}
+          </Button>
+        ) : null}
+      </div>
+    </Card>
   );
 }
 
@@ -3080,10 +3137,40 @@ function PatientAppointmentsScreen({
     );
   };
 
+  const emptyStateByTab = {
+    active: {
+      icon: CalendarDays,
+      title: t("noAppointmentsTitle"),
+      description: t("noAppointmentsBody"),
+      actionLabel: t("createAppointment"),
+      actionIcon: Plus,
+      onAction: () => setShowForm(true),
+      variant: "primary" as const,
+    },
+    request: {
+      icon: CalendarClock,
+      title: t("noAppointmentRequestsTitle"),
+      description: t("noAppointmentRequestsBody"),
+      actionLabel: t("checkLater"),
+      actionIcon: CalendarClock,
+      onAction: () => setTab("active"),
+      variant: "primary" as const,
+    },
+    cancelled: {
+      icon: CalendarX,
+      title: t("noCancelledAppointmentsTitle"),
+      description: t("noCancelledAppointmentsBody"),
+      actionLabel: t("viewAllAppointments"),
+      actionIcon: CalendarDays,
+      onAction: () => setTab("active"),
+      variant: "danger" as const,
+    },
+  }[tab];
+
   return (
     <>
       <ScreenHeader title={t("patientAppointments")} eyebrow={patient.patientCode}>
-        <p>{t("noAppointmentsBody")}</p>
+        <p>{t("patientAppointmentsIntro")}</p>
       </ScreenHeader>
       <div className="app-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 md:grid md:grid-cols-3 md:overflow-visible">
         {[
@@ -3102,18 +3189,7 @@ function PatientAppointmentsScreen({
       </div>
 
       {!visibleAppointments.length ? (
-        <Card className="border-[var(--primary)] bg-[var(--surface-soft)]">
-          <div className="grid gap-3 text-center">
-            <CalendarDays className="mx-auto text-[var(--primary)]" size={42} />
-            <h2 className="text-xl font-black">{t("noAppointmentsTitle")}</h2>
-            <p className="text-sm font-semibold leading-relaxed text-[var(--muted)]">
-              {t("noAppointmentsBody")}
-            </p>
-            <Button icon={Plus} onClick={() => setShowForm(true)}>
-              {t("createAppointment")}
-            </Button>
-          </div>
-        </Card>
+        <EmptyState {...emptyStateByTab} />
       ) : (
         <div className="grid gap-3">
           {visibleAppointments.map((appointment) => (

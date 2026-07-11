@@ -86,9 +86,20 @@ export const translations = {
     myAppointments: "นัดหมายของฉัน",
     appointmentRequests: "คำขอนัดหมาย",
     cancelledAppointments: "ยกเลิกนัดหมาย",
+    patientAppointmentsIntro:
+      "ท่านสามารถจัดการนัดหมาย ติดตามคำขอ และดูประวัติการยกเลิกได้ที่นี่",
     noAppointmentsTitle: "ยังไม่มีการทำนัดหมาย",
-    noAppointmentsBody: "ท่านสามารถทำนัดหมายได้ โดยกดปุ่มสร้างนัดหมายด้านล่าง",
+    noAppointmentsBody:
+      "คุณยังไม่มีนัดหมายในขณะนี้ สามารถสร้างนัดหมายใหม่หรือติดตามนัดหมายจากแพทย์และเจ้าหน้าที่ได้ที่นี่",
+    noAppointmentRequestsTitle: "ยังไม่มีคำขอนัดหมาย",
+    noAppointmentRequestsBody:
+      "เมื่อผู้ป่วยส่งคำขอนัดหมาย รายการจะแสดงที่นี่เพื่อให้แพทย์หรือเจ้าหน้าที่ตรวจสอบและยืนยันเวลา",
+    noCancelledAppointmentsTitle: "ยังไม่มีรายการยกเลิกนัดหมาย",
+    noCancelledAppointmentsBody:
+      "หากมีการยกเลิกนัดหมาย ระบบจะแสดงประวัติการยกเลิก พร้อมเหตุผลและวันที่ยกเลิกไว้ที่นี่",
     createAppointment: "+ สร้างนัดหมาย",
+    checkLater: "ตรวจสอบภายหลัง",
+    viewAllAppointments: "ดูนัดหมายทั้งหมด",
     selectProvider: "เลือกหน่วยนัดหมาย",
     selectLocation: "เลือกสถานที่",
     selectDate: "เลือกวันที่",
@@ -507,9 +518,20 @@ export const translations = {
     myAppointments: "My Appointments",
     appointmentRequests: "Appointment Requests",
     cancelledAppointments: "Cancelled Appointments",
+    patientAppointmentsIntro:
+      "Manage appointments, track requests, and review cancellation history here.",
     noAppointmentsTitle: "No appointments yet",
-    noAppointmentsBody: "You can create an appointment by tapping the button below.",
+    noAppointmentsBody:
+      "You do not have any appointments at the moment. You can create a new appointment or track appointments from doctors and healthcare staff here.",
+    noAppointmentRequestsTitle: "No appointment requests",
+    noAppointmentRequestsBody:
+      "When patients send appointment requests, they will appear here for doctors or healthcare staff to review and confirm.",
+    noCancelledAppointmentsTitle: "No cancelled appointments",
+    noCancelledAppointmentsBody:
+      "If an appointment is cancelled, the cancellation history, reason, and cancellation date will appear here.",
     createAppointment: "+ Create Appointment",
+    checkLater: "Check Later",
+    viewAllAppointments: "View All Appointments",
     selectProvider: "Select provider",
     selectLocation: "Select location",
     selectDate: "Select date",
