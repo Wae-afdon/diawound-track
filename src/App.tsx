@@ -4563,10 +4563,14 @@ function DoctorLatestWoundSection({
 
   return (
     <Card>
-      <div className="grid gap-4 xl:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.1fr)]">
-        <div className="grid gap-3">
-          <MockWoundPhoto imageDataUrl={latest.imageDataUrl} withSegmentation />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(280px,0.85fr)_minmax(0,1.15fr)]">
+        <div className="grid content-start gap-3 xl:self-start">
+          <MockWoundPhoto
+            imageDataUrl={latest.imageDataUrl}
+            withSegmentation
+            className="xl:max-h-[280px]"
+          />
+          <div className="grid auto-rows-auto content-start items-start gap-3 sm:grid-cols-2">
             <InfoCell label={t("lastUpdate")} value={formatDateTime(latest.createdAt, language)} />
             <InfoCell label={t("uploadedBy")} value={roleDisplayName(latest.createdByRole, language)} />
             <InfoCell label={t("visitType")} value={localize(VISIT_TYPE_COPY[latest.visitType], language)} />
@@ -4574,7 +4578,7 @@ function DoctorLatestWoundSection({
           </div>
         </div>
 
-        <div className="grid gap-4">
+        <div className="grid content-start gap-4">
           <div>
             <div className="flex flex-wrap gap-2">
               <PhaseBadge phase={latest.clinicalPhase} />
