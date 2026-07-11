@@ -1,0 +1,225 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800;900&family=Sarabun:wght@400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family:
+    "Noto Sans Thai",
+    "Sarabun",
+    system-ui,
+    "Tahoma",
+    sans-serif;
+  color: #14303a;
+  background: #eaf4f7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+@media (min-width: 1024px) {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    overflow: hidden;
+  }
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.theme-medical_clean {
+  --app-bg: #eaf4f7;
+  --phone-bg: #f8fbfc;
+  --phone-line: #cfe4eb;
+  --surface: #ffffff;
+  --surface-soft: #eef8fa;
+  --surface-strong: #dff3f5;
+  --ink: #14303a;
+  --muted: #5c7280;
+  --line: #cfe4eb;
+  --primary: #0e7cc5;
+  --primary-ink: #ffffff;
+  --secondary: #0f9f8f;
+  --accent: #13b7c8;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --success: #16875b;
+}
+
+.theme-community_care {
+  --app-bg: #eaf6ec;
+  --phone-bg: #fbfdf7;
+  --phone-line: #d3e5ca;
+  --surface: #ffffff;
+  --surface-soft: #eff8e8;
+  --surface-strong: #dcefd3;
+  --ink: #1e342a;
+  --muted: #617164;
+  --line: #d3e5ca;
+  --primary: #2f8f5b;
+  --primary-ink: #ffffff;
+  --secondary: #257b8f;
+  --accent: #c58a15;
+  --warning: #b7791f;
+  --danger: #c24141;
+  --success: #1f8a4c;
+}
+
+.theme-doctor_dark {
+  --app-bg: #111827;
+  --phone-bg: #0f172a;
+  --phone-line: #30445f;
+  --surface: #172033;
+  --surface-soft: #1f2d45;
+  --surface-strong: #253a58;
+  --ink: #edf6ff;
+  --muted: #a7bbd2;
+  --line: #30445f;
+  --primary: #38bdf8;
+  --primary-ink: #07111e;
+  --secondary: #2dd4bf;
+  --accent: #f59e0b;
+  --warning: #fbbf24;
+  --danger: #fb7185;
+  --success: #34d399;
+}
+
+.app-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.app-scrollbar::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.app-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 8px;
+}
+
+.doctor-patient-drawer {
+  animation: doctor-patient-drawer-in 180ms ease-out both;
+}
+
+.doctor-patient-drawer-backdrop {
+  animation: doctor-patient-drawer-backdrop-in 160ms ease-out both;
+}
+
+@keyframes doctor-patient-drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes doctor-patient-drawer-backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.mock-wound-photo {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 55% 50%, rgba(255, 230, 199, 0.94), transparent 34%),
+    radial-gradient(circle at 36% 42%, rgba(198, 116, 91, 0.42), transparent 24%),
+    linear-gradient(145deg, #c38e70 0%, #f1bea0 45%, #b7765d 100%);
+}
+
+.mock-wound-photo::before {
+  content: "";
+  position: absolute;
+  inset: 17% 14%;
+  border-radius: 48% 42% 54% 46%;
+  background: rgba(185, 128, 74, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.45);
+}
+
+.mock-wound-photo::after {
+  content: "";
+  position: absolute;
+  inset: 25% 27% 28% 25%;
+  border-radius: 44% 50% 42% 56%;
+  background:
+    radial-gradient(circle at 34% 48%, rgba(181, 48, 72, 0.88), transparent 31%),
+    radial-gradient(circle at 61% 55%, rgba(218, 166, 45, 0.85), transparent 28%),
+    radial-gradient(circle at 44% 66%, rgba(41, 45, 52, 0.74), transparent 12%),
+    rgba(201, 73, 93, 0.52);
+  border: 2px solid rgba(255, 255, 255, 0.62);
+}
+
+.segmentation-layer span {
+  position: absolute;
+  z-index: 3;
+  display: block;
+  border: 2px solid rgba(255, 255, 255, 0.72);
+}
+
+.seg-granulation {
+  left: 28%;
+  top: 32%;
+  width: 35%;
+  height: 30%;
+  border-radius: 44% 48% 54% 40%;
+  background: rgba(216, 78, 101, 0.72);
+}
+
+.seg-fibrin {
+  left: 52%;
+  top: 43%;
+  width: 24%;
+  height: 20%;
+  border-radius: 46% 50% 44% 54%;
+  background: rgba(227, 177, 49, 0.82);
+}
+
+.seg-callus {
+  left: 18%;
+  top: 21%;
+  width: 58%;
+  height: 50%;
+  border-radius: 48% 42% 54% 46%;
+  background: rgba(183, 134, 79, 0.2);
+}
+
+.seg-necrotic {
+  left: 40%;
+  top: 56%;
+  width: 13%;
+  height: 14%;
+  border-radius: 50%;
+  background: rgba(34, 39, 46, 0.82);
+}
