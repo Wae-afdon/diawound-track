@@ -44,7 +44,7 @@ import type {
   ReactNode,
   SetStateAction,
 } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -376,6 +376,48 @@ function readJsonArray<T>(key: string, initialValue: T[]): T[] {
   } catch {
     return initialValue;
   }
+}
+
+function readImageFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("Cannot read image file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function resizeImageDataUrl(dataUrl: string, maxDimension = 1600, quality = 0.86) {
+  return new Promise<string>((resolve) => {
+    if (!dataUrl.startsWith("data:image")) {
+      resolve(dataUrl);
+      return;
+    }
+
+    const image = new Image();
+    image.onload = () => {
+      const longestSide = Math.max(image.width, image.height);
+      if (!longestSide || longestSide <= maxDimension) {
+        resolve(dataUrl);
+        return;
+      }
+
+      const scale = maxDimension / longestSide;
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(image.width * scale);
+      canvas.height = Math.round(image.height * scale);
+      const context = canvas.getContext("2d");
+      if (!context) {
+        resolve(dataUrl);
+        return;
+      }
+
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    image.onerror = () => resolve(dataUrl);
+    image.src = dataUrl;
+  });
 }
 
 async function uploadAssessmentImagesForCloud(records: AssessmentRecord[]) {
@@ -1674,6 +1716,8 @@ function AppShell({
   showMedicalDisclaimer,
   showPatientChat,
   onPatientChat,
+  onPatientCameraCapture,
+  onPatientCameraError,
   children,
 }: {
   theme: ThemeId;
@@ -1688,11 +1732,43 @@ function AppShell({
   showMedicalDisclaimer: boolean;
   showPatientChat: boolean;
   onPatientChat: () => void;
+  onPatientCameraCapture?: (dataUrl: string) => void;
+  onPatientCameraError?: (messageKey: TranslationKey) => void;
   children: ReactNode;
 }) {
+  const { t } = useLanguage();
   const [chatQuickPanelOpen, setChatQuickPanelOpen] = useState(false);
+  const patientCameraInputRef = useRef<HTMLInputElement>(null);
 
   const closeChatQuickPanel = () => setChatQuickPanelOpen(false);
+  const openPatientCamera = () => {
+    if (role !== "patient") {
+      onNavigate("patientPhoto");
+      return;
+    }
+
+    try {
+      patientCameraInputRef.current?.click();
+    } catch {
+      onPatientCameraError?.("cameraPermissionDenied");
+    }
+    onNavigate("patientPhoto");
+  };
+
+  const handlePatientCameraFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const dataUrl = await readImageFileAsDataUrl(file);
+      onPatientCameraCapture?.(dataUrl);
+      onNavigate("patientPhoto");
+    } catch {
+      onPatientCameraError?.("cameraUnavailable");
+      onNavigate("patientPhoto");
+    }
+  };
 
   return (
     <div className={`theme-${theme} min-h-screen overflow-x-hidden bg-[var(--app-bg)] text-[var(--ink)] lg:h-screen lg:min-h-0 lg:overflow-hidden`}>
@@ -1730,7 +1806,23 @@ function AppShell({
               }}
             />
           ) : null}
-          <MobileBottomNav role={role} page={page} onNavigate={onNavigate} />
+          {role === "patient" ? (
+            <input
+              ref={patientCameraInputRef}
+              className="sr-only"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              aria-label={t("openWoundCamera")}
+              onChange={handlePatientCameraFile}
+            />
+          ) : null}
+          <MobileBottomNav
+            role={role}
+            page={page}
+            onNavigate={onNavigate}
+            onPatientCamera={openPatientCamera}
+          />
         </div>
       </div>
     </div>
@@ -1741,10 +1833,12 @@ function MobileBottomNav({
   role,
   page,
   onNavigate,
+  onPatientCamera,
 }: {
   role: RoleId;
   page: AppPage;
   onNavigate: (page: AppPage) => void;
+  onPatientCamera?: () => void;
 }) {
   const { t } = useLanguage();
   return (
@@ -1758,7 +1852,14 @@ function MobileBottomNav({
             <button
               key={`${role}-${item.page}`}
               type="button"
-              onClick={() => onNavigate(item.page)}
+              aria-label={featuredCamera ? t("openWoundCamera") : t(item.labelKey)}
+              onClick={() => {
+                if (featuredCamera && onPatientCamera) {
+                  onPatientCamera();
+                  return;
+                }
+                onNavigate(item.page);
+              }}
               className={`grid place-items-center text-center text-[11px] font-black leading-tight ${
                 featuredCamera
                   ? `-mt-10 mx-auto min-h-[88px] w-[78px] rounded-[2rem] border-4 border-[var(--phone-bg)] px-2 shadow-[0_16px_34px_rgba(56,189,248,0.28)] ${
@@ -2693,32 +2794,112 @@ function TakeWoundPhotoScreen({
   latest,
   onCreateAssessment,
   onNavigate,
+  initialCapturedImage,
+  cameraErrorKey,
+  onInitialCaptureConsumed,
+  onCameraErrorConsumed,
 }: {
   patient: Patient;
   latest?: AssessmentRecord;
   onCreateAssessment: (record: AssessmentRecord) => Promise<void>;
   onNavigate: (page: AppPage) => void;
+  initialCapturedImage?: string;
+  cameraErrorKey?: TranslationKey | "";
+  onInitialCaptureConsumed?: () => void;
+  onCameraErrorConsumed?: () => void;
 }) {
   const { language, t } = useLanguage();
   const [imageDataUrl, setImageDataUrl] = useState("");
+  const [pendingImageDataUrl, setPendingImageDataUrl] = useState("");
   const [symptoms, setSymptoms] = useState<SymptomForm>(initialSymptoms);
   const [patientNote, setPatientNote] = useState("");
   const [message, setMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const isSavingRef = useRef(false);
+
+  useEffect(() => {
+    if (!initialCapturedImage) return;
+    setPendingImageDataUrl(initialCapturedImage);
+    setImageDataUrl("");
+    setMessage("");
+    onInitialCaptureConsumed?.();
+  }, [initialCapturedImage]);
+
+  useEffect(() => {
+    if (!cameraErrorKey) return;
+    setMessage(t(cameraErrorKey));
+    onCameraErrorConsumed?.();
+  }, [cameraErrorKey, t]);
+
+  const handleImageFile = async (
+    event: ChangeEvent<HTMLInputElement>,
+    errorKey: TranslationKey,
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const dataUrl = await readImageFileAsDataUrl(file);
+      setPendingImageDataUrl(dataUrl);
+      setImageDataUrl("");
+      setMessage("");
+    } catch {
+      setMessage(t(errorKey));
+    }
+  };
+
+  const openCamera = () => {
+    setMessage("");
+    if (!cameraInputRef.current) {
+      setMessage(t("cameraUnavailable"));
+      return;
+    }
+    try {
+      cameraInputRef.current.click();
+    } catch {
+      setMessage(t("cameraPermissionDenied"));
+    }
+  };
+
+  const openUploadPicker = () => {
+    setMessage("");
+    uploadInputRef.current?.click();
+  };
+
+  const confirmPendingPhoto = () => {
+    if (!pendingImageDataUrl) return;
+    setImageDataUrl(pendingImageDataUrl);
+    setPendingImageDataUrl("");
+    setMessage("");
+  };
+
+  const retakePhoto = () => {
+    setPendingImageDataUrl("");
+    setImageDataUrl("");
+    openCamera();
+  };
 
   const runMockAi = async () => {
+    if (isSavingRef.current) return;
     if (!imageDataUrl) {
       setMessage(t("uploadPhotoFirst"));
       return;
     }
+    isSavingRef.current = true;
+    setIsSaving(true);
+    setMessage(t("loading"));
+    const resizedImageDataUrl = await resizeImageDataUrl(imageDataUrl);
     const record = createAssessmentFromSymptoms({
       patient,
       role: "patient",
       visitType: "self",
-      imageDataUrl,
+      imageDataUrl: resizedImageDataUrl,
       symptoms,
       language,
     });
-    setMessage(t("loading"));
     try {
       await onCreateAssessment({
         ...record,
@@ -2730,11 +2911,33 @@ function TakeWoundPhotoScreen({
       setMessage(t("savedSuccessfully"));
     } catch (error) {
       setMessage(`${t("failedToSave")}: ${formatSupabaseError(error)}`);
+    } finally {
+      isSavingRef.current = false;
+      setIsSaving(false);
     }
   };
+  const previewImageDataUrl = pendingImageDataUrl || imageDataUrl;
+  const hasConfirmedImage = Boolean(imageDataUrl);
 
   return (
     <>
+      <input
+        ref={cameraInputRef}
+        className="sr-only"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        aria-label={t("openWoundCamera")}
+        onChange={(event) => handleImageFile(event, "cameraUnavailable")}
+      />
+      <input
+        ref={uploadInputRef}
+        className="sr-only"
+        type="file"
+        accept="image/*"
+        aria-label={t("uploadImage")}
+        onChange={(event) => handleImageFile(event, "cameraUnavailable")}
+      />
       <ScreenHeader title={t("takeWoundPhoto")} eyebrow={`${t("appName")} / ${t("patientRoleLabel")}`}>
         <p>{patient.patientCode} / {t("dailyReminderCopy")}</p>
       </ScreenHeader>
@@ -2744,44 +2947,76 @@ function TakeWoundPhotoScreen({
         <div className="grid gap-4">
           <div>
             <h2 className="text-lg font-black">{t("woundPhotoTitle")}</h2>
+            <p className="mt-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3 text-xs font-semibold leading-relaxed text-[var(--muted)]">
+              {t("woundPhotoCaptureGuidance")}
+            </p>
             <div className="mt-3">
-              {imageDataUrl ? (
-                <MockWoundPhoto imageDataUrl={imageDataUrl} withSegmentation />
+              {previewImageDataUrl ? (
+                <MockWoundPhoto imageDataUrl={previewImageDataUrl} withSegmentation />
               ) : (
-                <div className="grid aspect-[4/3] place-items-center rounded-lg border border-dashed border-[var(--line)] bg-[var(--surface)] p-4 text-center">
+                <button
+                  type="button"
+                  aria-label={t("openWoundCamera")}
+                  onClick={openCamera}
+                  className="grid aspect-[4/3] w-full place-items-center rounded-lg border border-dashed border-[var(--line)] bg-[var(--surface)] p-4 text-center"
+                >
                   <div>
                     <Camera className="mx-auto text-[var(--primary)]" size={34} />
                     <p className="mt-2 text-sm font-black text-[var(--ink)]">
                       {t("noWoundImageYet")}
                     </p>
+                    <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
+                      {t("openWoundCamera")}
+                    </p>
                   </div>
-                </div>
+                </button>
               )}
             </div>
           </div>
+          {pendingImageDataUrl ? (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Button variant="secondary" icon={Camera} onClick={retakePhoto}>
+                {t("retakeShort")}
+              </Button>
+              <Button icon={CheckCircle2} onClick={confirmPendingPhoto}>
+                {t("useThisPhoto")}
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Button variant="secondary" icon={Camera} onClick={hasConfirmedImage ? retakePhoto : openCamera}>
+                {hasConfirmedImage ? t("retakeShort") : t("takeWoundPhoto")}
+              </Button>
+              <Button variant="secondary" icon={Upload} onClick={openUploadPicker}>
+                {t("uploadImage")}
+              </Button>
+            </div>
+          )}
         </div>
       </Card>
 
-      <Card>
-        <div className="grid gap-4">
-          <h2 className="text-lg font-black">{t("additionalDetails")}</h2>
-          <SymptomChecklist symptoms={symptoms} setSymptoms={setSymptoms} />
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <InfoCell label={t("photoDate")} value={formatDateTime(new Date().toISOString(), language)} />
-            <InfoCell label={t("woundLocation")} value={localize(patient.woundLocation, language)} />
-            <InfoCell label={t("woundSensation")} value={localizedSensationStatus(symptoms, language)} />
-            <InfoCell
-              label={t("numbnessReducedSensation")}
-              value={symptoms.hasNumbness || symptoms.reducedSensation ? t("saved") : "-"}
+      {hasConfirmedImage ? (
+        <Card>
+          <div className="grid gap-4">
+            <h2 className="text-lg font-black">{t("additionalDetails")}</h2>
+            <SymptomChecklist symptoms={symptoms} setSymptoms={setSymptoms} />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <InfoCell label={t("photoDate")} value={formatDateTime(new Date().toISOString(), language)} />
+              <InfoCell label={t("woundLocation")} value={localize(patient.woundLocation, language)} />
+              <InfoCell label={t("woundSensation")} value={localizedSensationStatus(symptoms, language)} />
+              <InfoCell
+                label={t("numbnessReducedSensation")}
+                value={symptoms.hasNumbness || symptoms.reducedSensation ? t("saved") : "-"}
+              />
+            </div>
+            <TextArea
+              label={t("patientNote")}
+              value={patientNote}
+              onChange={(event) => setPatientNote(event.target.value)}
             />
           </div>
-          <TextArea
-            label={t("patientNote")}
-            value={patientNote}
-            onChange={(event) => setPatientNote(event.target.value)}
-          />
-        </div>
-      </Card>
+        </Card>
+      ) : null}
       </div>
 
       <Card>
@@ -2812,36 +3047,15 @@ function TakeWoundPhotoScreen({
         </div>
       </Card>
 
+      {hasConfirmedImage ? (
       <Card>
         <div className="grid gap-3">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Button variant="secondary" icon={Camera} onClick={() => setImageDataUrl("")}>
-              {t("retakePhoto")}
-            </Button>
-            <label className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--surface-soft)] px-3 py-2 text-sm font-black text-[var(--ink)]">
-              <Upload size={17} />
-              <span>{t("uploadImage")}</span>
-              <input
-                className="sr-only"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = () => setImageDataUrl(String(reader.result ?? ""));
-                  reader.readAsDataURL(file);
-                }}
-              />
-            </label>
-          </div>
-          <Button icon={Sparkles} onClick={runMockAi}>
-            {t("analyzeWithAi")}
+          <Button icon={Sparkles} onClick={runMockAi} disabled={isSaving}>
+            {isSaving ? t("loading") : t("analyzeWithAi")}
           </Button>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            <Button variant="secondary" icon={CheckCircle2} onClick={runMockAi}>
-              {t("saveTodayResult")}
+            <Button variant="secondary" icon={CheckCircle2} onClick={runMockAi} disabled={isSaving}>
+              {isSaving ? t("loading") : t("saveTodayResult")}
             </Button>
             <Button variant="secondary" icon={Upload} onClick={() => setMessage(t("contactChw"))}>
               {t("sendToDoctorReview")}
@@ -2859,6 +3073,9 @@ function TakeWoundPhotoScreen({
           {message ? <Badge tone="warning">{message}</Badge> : null}
         </div>
       </Card>
+      ) : message ? (
+        <Badge tone="warning">{message}</Badge>
+      ) : null}
     </>
   );
 }
@@ -6667,6 +6884,8 @@ function DiaWoundTrackApp() {
     localStorage.getItem(STORAGE_KEYS.selectedPatient) ?? "P001",
   );
   const [activeAssessmentId, setActiveAssessmentId] = useState<string | undefined>();
+  const [pendingPatientCameraImage, setPendingPatientCameraImage] = useState("");
+  const [pendingPatientCameraError, setPendingPatientCameraError] = useState<TranslationKey | "">("");
   const [history, setHistory] = useState<AppPage[]>([]);
   const syncStates = [
     patientsSync,
@@ -6742,6 +6961,8 @@ function DiaWoundTrackApp() {
     setSelectedPatientId(defaultPatientId);
     localStorage.setItem(STORAGE_KEYS.selectedPatient, defaultPatientId);
     setActiveAssessmentId(undefined);
+    setPendingPatientCameraImage("");
+    setPendingPatientCameraError("");
     setHistory([]);
     setPage(defaultPageByRole[nextRole]);
   };
@@ -6749,6 +6970,8 @@ function DiaWoundTrackApp() {
   const logout = () => {
     localStorage.removeItem(STORAGE_KEYS.role);
     setRoleState(null);
+    setPendingPatientCameraImage("");
+    setPendingPatientCameraError("");
     setHistory([]);
   };
 
@@ -6875,6 +7098,10 @@ function DiaWoundTrackApp() {
           latest={latest}
           onCreateAssessment={createAssessment}
           onNavigate={navigate}
+          initialCapturedImage={pendingPatientCameraImage}
+          cameraErrorKey={pendingPatientCameraError}
+          onInitialCaptureConsumed={() => setPendingPatientCameraImage("")}
+          onCameraErrorConsumed={() => setPendingPatientCameraError("")}
         />
       );
     }
@@ -7207,6 +7434,14 @@ function DiaWoundTrackApp() {
       }
       showPatientChat={role === "patient" && page !== "patientChat"}
       onPatientChat={() => navigate("patientChat")}
+      onPatientCameraCapture={(dataUrl) => {
+        setPendingPatientCameraError("");
+        setPendingPatientCameraImage(dataUrl);
+      }}
+      onPatientCameraError={(messageKey) => {
+        setPendingPatientCameraImage("");
+        setPendingPatientCameraError(messageKey);
+      }}
     >
       <CloudSyncBanner states={syncStates} />
       {renderPage()}
